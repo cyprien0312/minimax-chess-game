@@ -1,1 +1,5 @@
 referee/
+.DS_Store
+agent/__pycache__/__init__.cpython-310.pyc
+.gitignore
+agent/__pycache__/program.cpython-310.pyc
