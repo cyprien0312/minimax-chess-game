@@ -4,8 +4,7 @@
 import math
 import random
 from referee.game import \
-    PlayerColor, Action, SpawnAction, SpreadAction, HexPos, HexDir
-
+    PlayerColor, Action, SpawnAction, SpreadAction, HexPos, HexDir, Board
 
 # This is the entry point for your game playing agent. Currently the agent
 # simply spawns a token at the centre of the board if playing as RED, and
@@ -19,6 +18,7 @@ class Agent:
         Initialise the agent.
         """
         self._color = color
+        self.game_state = Board()
         match color:
             case PlayerColor.RED:
                 print("Testing: I am playing as red")
@@ -33,13 +33,15 @@ class Agent:
             case PlayerColor.RED:
                 return SpawnAction(HexPos(3, 3))
             case PlayerColor.BLUE:
-                # This is going to be invalid... BLUE never spawned!
-                return SpreadAction(HexPos(3, 3), HexDir.Up)
+                mcts = MCTS(self.game_state, num_iterations=1000)
+                best_action = mcts.search()
+                return best_action
 
     def turn(self, color: PlayerColor, action: Action, **referee: dict):
         """
         Update the agent with the last player's action.
         """
+        self.game_state.apply_action(action)
         match action:
             case SpawnAction(cell):
                 print(f"Testing: {color} SPAWN at {cell}")
@@ -89,7 +91,7 @@ class MCTS:
             node.add_child(child_node)
 
     def rollout(self, state):
-        while not state.is_terminal():
+        while not state.game_over():
             legal_actions = state.get_legal_actions()
             random_action = random.choice(legal_actions)
             state = state.copy().apply_action(random_action)
@@ -109,3 +111,6 @@ class MCTS:
             )
 
         return max(node.children, key=uct)
+    
+
+    def get_legal_actions()
