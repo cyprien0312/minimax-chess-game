@@ -84,42 +84,59 @@ class MCTS:
         self.num_iterations = num_iterations
         self.exploration_parameter = exploration_parameter
 
+    # search for the best child
     def search(self):
+        # loop for iterations, later on changed to time
         for _ in range(self.num_iterations):
+
+            # selection, needs check
             selected_node = self.select_node(self.root)
             if not selected_node.state.is_terminal():
                 self.expand(selected_node)
                 selected_node = random.choice(selected_node.children)
-
+            #simulation for selected node
             winner_color = self.rollout(selected_node)
+            #back propagation
             self.backpropagate(selected_node, (winner_color == self.root.color))
 
+        #after iteration, choose the best child
         best_child = self.best_child(self.root, 0)
         return best_child.action
 
-
+    #need check and fix!
     def select_node(self, node: Node):
         if not node.children:
             return node
         else:
             return self.select_node(self.best_child(node, self.exploration_parameter))
-
+        
+    #expand the node, and add all available child
     def expand(self, node):
         legal_actions = node.get_legal_actions()
         for action in legal_actions:
+            #use copy of state, otherwise ruined the original state
             child_state = node.state.copy().apply_action(action)
             child_node = Node(child_state, node, action)
             node.add_child(child_node)
 
+    #simulations
     def rollout(self, node):
+        #create copy node
         curr_node = node
+        #loop until game over
         while not curr_node.state.game_over():
-            legal_actions = node.get_legal_actions()
-            random_action = random.choice(legal_actions)
-            curr_node.state.apply_action(random_action)
-            curr_node.color = _SWITCH_COLOR[curr_node.color]
+            #it needs to be expending nodes and switch side at the same time, below comment code is wrong
+
+            #legal_actions = node.get_legal_actions()
+            #radom move
+            #random_action = random.choice(legal_actions)
+            #curr_node.state.apply_action(random_action)
+            # need check 
+            #curr_node.color = _SWITCH_COLOR[curr_node.color]
+
         return curr_node.state.winner_color()
 
+    #back propagation 
     def backpropagate(self, node, result):
         node.visits += 1
         node.wins += result
