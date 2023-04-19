@@ -55,7 +55,7 @@ class Agent:
                 pass
 
 class Node:
-    def __init__(self, state, color, parent=None, action=None):
+    def __init__(self, state: Board, color: PlayerColor, parent=None, action=None):
         self.color = color
         self.state = state
         self.parent = parent
@@ -66,11 +66,18 @@ class Node:
 
     def add_child(self, child):
         self.children.append(child)
+
+    def is_terminal_node(self):
+        return self.state.game_over()
     
-    def get_result(self):
-        board = self.state
-        #...
         
+    def get_legal_actions(self):
+        # looks like SpawnAction(HexPos(3, 3)) is an action
+        board = self.root.state
+        color = self.root.color
+        #....
+
+
 class MCTS:
     def __init__(self, root_state, curr_color, num_iterations=1000, exploration_parameter=math.sqrt(2)):
         self.root = Node(root_state, curr_color)
@@ -80,34 +87,38 @@ class MCTS:
     def search(self):
         for _ in range(self.num_iterations):
             selected_node = self.select_node(self.root)
-            result = self.rollout(selected_node)
-            self.backpropagate(selected_node, result)
+            if not selected_node.state.is_terminal():
+                self.expand(selected_node)
+                selected_node = random.choice(selected_node.children)
+
+            winner_color = self.rollout(selected_node)
+            self.backpropagate(selected_node, (winner_color == self.root.color))
 
         best_child = self.best_child(self.root, 0)
         return best_child.action
 
-    def select_node(self, node):
+
+    def select_node(self, node: Node):
         if not node.children:
             return node
         else:
             return self.select_node(self.best_child(node, self.exploration_parameter))
 
+    def expand(self, node):
+        legal_actions = node.get_legal_actions()
+        for action in legal_actions:
+            child_state = node.state.copy().apply_action(action)
+            child_node = Node(child_state, node, action)
+            node.add_child(child_node)
 
-#    def expand(self, node):
-#        legal_actions = node.state.get_legal_actions()
-#        for action in legal_actions:
-#            child_state = node.state.copy().apply_action(action)
-#            child_node = Node(child_state, node, action)
-#            node.add_child(child_node)
-#
-#    def rollout(self, node):
-#
-#        while not node.state.game_over():
-#            legal_actions = state.get_legal_actions()
-#            random_action = random.choice(legal_actions)
-#            state = state.copy().apply_action(random_action)
-#
-#        return node.get_result()/
+    def rollout(self, node):
+        curr_node = node
+        while not curr_node.state.game_over():
+            legal_actions = node.get_legal_actions()
+            random_action = random.choice(legal_actions)
+            curr_node.state.apply_action(random_action)
+            curr_node.color = _SWITCH_COLOR[curr_node.color]
+        return curr_node.state.winner_color()
 
     def backpropagate(self, node, result):
         node.visits += 1
@@ -124,8 +135,4 @@ class MCTS:
         return max(node.children, key=uct)
     
 
-    def get_legal_actions(self):
-        board = self.root.state
-        color = self.root.color
-        #....
 
