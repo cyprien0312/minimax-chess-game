@@ -11,6 +11,10 @@ from referee.game import \
 # spreads a token at the centre of the board if playing as BLUE. This is
 # intended to serve as an example of how to use the referee API -- obviously
 # this is not a valid strategy for actually playing the game!
+_SWITCH_COLOR = {
+    PlayerColor.RED: PlayerColor.BLUE,
+    PlayerColor.BLUE: PlayerColor.RED
+}
 
 class Agent:
     def __init__(self, color: PlayerColor, **referee: dict):
@@ -33,7 +37,7 @@ class Agent:
             case PlayerColor.RED:
                 return SpawnAction(HexPos(3, 3))
             case PlayerColor.BLUE:
-                mcts = MCTS(self.game_state, num_iterations=1000)
+                mcts = MCTS(self.game_state, PlayerColor.BLUE, num_iterations=1000)
                 best_action = mcts.search()
                 return best_action
 
@@ -51,7 +55,8 @@ class Agent:
                 pass
 
 class Node:
-    def __init__(self, state, parent=None, action=None):
+    def __init__(self, state, color, parent=None, action=None):
+        self.color = color
         self.state = state
         self.parent = parent
         self.action = action
@@ -61,17 +66,21 @@ class Node:
 
     def add_child(self, child):
         self.children.append(child)
-
+    
+    def get_result(self):
+        board = self.state
+        #...
+        
 class MCTS:
-    def __init__(self, root_state, num_iterations=1000, exploration_parameter=math.sqrt(2)):
-        self.root = Node(root_state)
+    def __init__(self, root_state, curr_color, num_iterations=1000, exploration_parameter=math.sqrt(2)):
+        self.root = Node(root_state, curr_color)
         self.num_iterations = num_iterations
         self.exploration_parameter = exploration_parameter
 
     def search(self):
         for _ in range(self.num_iterations):
             selected_node = self.select_node(self.root)
-            result = self.rollout(selected_node.state)
+            result = self.rollout(selected_node)
             self.backpropagate(selected_node, result)
 
         best_child = self.best_child(self.root, 0)
@@ -83,20 +92,22 @@ class MCTS:
         else:
             return self.select_node(self.best_child(node, self.exploration_parameter))
 
-    def expand(self, node):
-        legal_actions = node.state.get_legal_actions()
-        for action in legal_actions:
-            child_state = node.state.copy().apply_action(action)
-            child_node = Node(child_state, node, action)
-            node.add_child(child_node)
 
-    def rollout(self, state):
-        while not state.game_over():
-            legal_actions = state.get_legal_actions()
-            random_action = random.choice(legal_actions)
-            state = state.copy().apply_action(random_action)
-
-        return state.get_result()
+#    def expand(self, node):
+#        legal_actions = node.state.get_legal_actions()
+#        for action in legal_actions:
+#            child_state = node.state.copy().apply_action(action)
+#            child_node = Node(child_state, node, action)
+#            node.add_child(child_node)
+#
+#    def rollout(self, node):
+#
+#        while not node.state.game_over():
+#            legal_actions = state.get_legal_actions()
+#            random_action = random.choice(legal_actions)
+#            state = state.copy().apply_action(random_action)
+#
+#        return node.get_result()/
 
     def backpropagate(self, node, result):
         node.visits += 1
@@ -113,4 +124,8 @@ class MCTS:
         return max(node.children, key=uct)
     
 
-    def get_legal_actions()
+    def get_legal_actions(self):
+        board = self.root.state
+        color = self.root.color
+        #....
+
