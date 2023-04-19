@@ -72,7 +72,7 @@ class Node:
     
         
     def get_legal_actions(self):
-        # looks like SpawnAction(HexPos(3, 3)) is an action
+        # return a list of leagl actions
         board = self.root.state
         color = self.root.color
         #....
