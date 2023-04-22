@@ -116,7 +116,8 @@ class MCTS:
         for action in legal_actions:
             #use copy of state, otherwise ruined the original state
             child_state = node.state.copy().apply_action(action)
-            child_node = Node(child_state, node, action)
+            child_color = _SWITCH_COLOR[node.color]
+            child_node = Node(child_state, child_color, node, action)
             node.add_child(child_node)
 
     #simulations
