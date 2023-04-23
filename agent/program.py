@@ -51,8 +51,9 @@ class Agent:
                         
                 return best_action
             case PlayerColor.BLUE:
-                mcts = MCTS(self.game_state, PlayerColor.BLUE, num_iterations=10)
+                mcts = MCTS(self.game_state, PlayerColor.BLUE, num_iterations=500)
                 best_action = mcts.search()
+                mcts.print_tree(max_depth=343)
                 return best_action
 
     def turn(self, color: PlayerColor, action: Action, **referee: dict):
@@ -123,14 +124,14 @@ class MCTS:
             # selection, needs check
             selected_node = self.select_node(self.root)
             if not selected_node.is_terminal_node():
-                child_node = self.expand(selected_node)
+                selected_node = self.expand(selected_node)
             #simulation for selected node
-            winner_color = self.rollout(child_node)
+            winner_color = self.rollout(selected_node)
             #back propagation
-            self.backpropagate(child_node, (winner_color == self.root.color))
+            self.backpropagate(selected_node, (winner_color == self.root.color))
 
         #after iteration, choose the best child
-        best_child = self.best_child(self.root, self.exploration_parameter)
+        best_child = self.best_child(self.root, 0)
         return best_child.action
 
     #need check and fix!
@@ -207,5 +208,15 @@ class MCTS:
 
         return max(node.children, key=uct)
     
+    def print_tree(self, node=None, depth=0, max_depth=None):
+        if node is None:
+            node = self.root
+
+        if max_depth is not None and depth > max_depth:
+            return
+
+        print("  " * depth, node.action, node.wins, node.visits)
+        for child in node.children:
+            self.print_tree(child, depth + 1, max_depth)
 
 
