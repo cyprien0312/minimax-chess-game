@@ -41,19 +41,19 @@ class Agent:
         match self._color:
             case PlayerColor.RED:
                 mcts = MCTS(self.game_state, PlayerColor.RED, num_iterations=10)
-                actions = mcts.root.get_legal_actions()
+                spawns, spreads = mcts.root.get_legal_actions()
                 while True:
                     try:
-                        best_action = random.choice(actions)
+                        best_action = random.choice(spawns)
                         copy_state = deepcopy(self.game_state)
                         copy_state.apply_action(best_action)
                         break
                     except IllegalActionException:
-                        actions.remove(best_action)
+                        spawns.remove(best_action)
                         
                 return best_action
             case PlayerColor.BLUE:
-                mcts = MCTS(self.game_state, PlayerColor.BLUE, num_iterations=60)
+                mcts = MCTS(self.game_state, PlayerColor.BLUE, num_iterations=500)
                 best_action = mcts.search()
                 mcts.print_tree(max_depth=343)
                 return best_action
@@ -80,7 +80,7 @@ class Node:
         self.children = []
         self.wins = 0
         self.visits = 0
-        self.available_actions = self.get_legal_actions()
+        self.available_spawns, self.available_spreads = self.get_legal_actions()
 
     def add_child(self, child):
         self.children.append(child)
@@ -94,7 +94,8 @@ class Node:
         board = self.state
         color = self.color
         dim = BOARD_N
-        actions = []
+        spawns = []
+        spreads = []
         directions = [HexDir.Down, HexDir.DownLeft, HexDir.DownRight, HexDir.Up, HexDir.UpLeft, HexDir.UpRight]
         for row in range(dim * 2 - 1):
             for col in range(dim - abs(row - (dim - 1))):
@@ -105,10 +106,10 @@ class Node:
                     cellColor, cellPower = board[HexPos(r, q)]
                     if cellColor == color:
                         for direction in directions:
-                            actions.append(SpreadAction(HexPos(r, q), direction))
+                            spreads.append(SpreadAction(HexPos(r, q), direction))
                 else:
-                    actions.append(SpawnAction(HexPos(r, q)))
-        return actions 
+                    spawns.append(SpawnAction(HexPos(r, q)))
+        return spawns, spreads
 
 class MCTS:
     def __init__(self, root_state, curr_color, num_iterations=10, exploration_parameter=math.sqrt(2)):
@@ -154,33 +155,30 @@ class MCTS:
     def select_node(self, node: Node):
 
         # if the selected node is not full expanded, return the node, else find the best children
-        if node.available_actions:
+        if node.available_spawns or node.available_spreads:
             return node
         else:
             best_child = self.best_child(node, self.exploration_parameter)
             return self.select_node(best_child)
         
     #expand the node, and add all available child
-    def expand(self, node):
-        if not node.available_actions:
+    def expand(self, node: Node):
+        available_actions = node.available_spawns + node.available_spreads
+        if not available_actions:
             return
-        legal_actions = [a for a in node.available_actions if not self.is_illegal_action(a, node.state)]
-        action = random.choice(legal_actions)
+        if node.state._total_power >= 49:
+                available_actions = node.available_spreads
+        action = random.choice(available_actions)
         child_state = deepcopy(node.state)
         child_state.apply_action(action)
         child_color = _SWITCH_COLOR[node.color]
         child_node = Node(child_state, child_color, node, action)
-        node.available_actions.remove(action)
+        if action in node.available_spawns:
+            node.available_spawns.remove(action)
+        else:
+            node.available_spreads.remove(action)
         node.add_child(child_node)
         return child_node
-
-    def is_illegal_action(self, action, state):
-        try:
-            copy_state = deepcopy(state)
-            copy_state.apply_action(action)
-            return False
-        except IllegalActionException:
-            return True
 
     #simulations
     def rollout(self, node):
@@ -194,12 +192,13 @@ class MCTS:
             #it needs to be expending nodes and switch side at the same time, below comment code is wrong
 
 
-            legal_actions = tmp_node.get_legal_actions()
+            spawns, spreads = tmp_node.get_legal_actions()
             #random move
             if curr_state._total_power >= 49:
-                legal_actions = [action for action in legal_actions if not isinstance(action, SpawnAction)]
-
-            curr_state.apply_action(random.choice(legal_actions))
+                curr_state.apply_action(random.choice(spreads))
+            else:
+                all_actions = spawns + spreads
+                curr_state.apply_action(random.choice(all_actions))
             tmp_node.state = curr_state
             # need check 
             curr_color = _SWITCH_COLOR[curr_color]
