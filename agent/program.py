@@ -21,6 +21,12 @@ _SWITCH_COLOR = {
     PlayerColor.BLUE: PlayerColor.RED
 }
 
+COORDINATES = [
+    HexPos(r, q)
+    for r in range(7)
+    for q in range(7)
+    if abs(r - q) < 7
+]
 class Agent:
     def __init__(self, color: PlayerColor, **referee: dict):
         """
@@ -97,18 +103,14 @@ class Node:
         spawns = []
         spreads = []
         directions = [HexDir.Down, HexDir.DownLeft, HexDir.DownRight, HexDir.Up, HexDir.UpLeft, HexDir.UpRight]
-        for row in range(dim * 2 - 1):
-            for col in range(dim - abs(row - (dim - 1))):
-                # Map row, col to r, q
-                r = max((dim - 1) - row, 0) + col
-                q = max(row - (dim - 1), 0) + col
-                if board._cell_occupied(HexPos(r, q)):
-                    cellColor, cellPower = board[HexPos(r, q)]
-                    if cellColor == color:
-                        for direction in directions:
-                            spreads.append(SpreadAction(HexPos(r, q), direction))
-                else:
-                    spawns.append(SpawnAction(HexPos(r, q)))
+        for cor in COORDINATES:
+            if board._cell_occupied(cor):
+                cellColor, cellPower = board[cor]
+                if cellColor == color:
+                    for direction in directions:
+                        spreads.append(SpreadAction(cor, direction))
+            else:
+                spawns.append(SpawnAction(cor))
         return spawns, spreads
 
 class MCTS:
@@ -122,7 +124,7 @@ class MCTS:
         start_time = time.time()
         # loop for iterations, later on changed to time
         for i in range(self.num_iterations):
-            print(i)
+            #print(i)
             iteration_start_time = time.time()
 
             # selection, needs check
