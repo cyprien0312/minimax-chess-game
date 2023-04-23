@@ -8,6 +8,8 @@ from referee.game import \
 from referee.game.constants import *
 from referee.game.exceptions import *
 from copy import deepcopy
+import time
+
 
 # This is the entry point for your game playing agent. Currently the agent
 # simply spawns a token at the centre of the board if playing as RED, and
@@ -51,7 +53,7 @@ class Agent:
                         
                 return best_action
             case PlayerColor.BLUE:
-                mcts = MCTS(self.game_state, PlayerColor.BLUE, num_iterations=500)
+                mcts = MCTS(self.game_state, PlayerColor.BLUE, num_iterations=60)
                 best_action = mcts.search()
                 mcts.print_tree(max_depth=343)
                 return best_action
@@ -78,7 +80,7 @@ class Node:
         self.children = []
         self.wins = 0
         self.visits = 0
-        self.unexpanded_children = self.get_legal_actions()
+        self.available_actions = self.get_legal_actions()
 
     def add_child(self, child):
         self.children.append(child)
@@ -93,7 +95,7 @@ class Node:
         color = self.color
         dim = BOARD_N
         actions = []
-        directions = [HexDir.Down, HexDir.DownLeft, HexDir.DownRight, HexDir.Up, HexDir.UpLeft]
+        directions = [HexDir.Down, HexDir.DownLeft, HexDir.DownRight, HexDir.Up, HexDir.UpLeft, HexDir.UpRight]
         for row in range(dim * 2 - 1):
             for col in range(dim - abs(row - (dim - 1))):
                 # Map row, col to r, q
@@ -106,9 +108,7 @@ class Node:
                             actions.append(SpreadAction(HexPos(r, q), direction))
                 else:
                     actions.append(SpawnAction(HexPos(r, q)))
-        return actions
-
-
+        return actions 
 
 class MCTS:
     def __init__(self, root_state, curr_color, num_iterations=10, exploration_parameter=math.sqrt(2)):
@@ -118,81 +118,95 @@ class MCTS:
 
     # search for the best child
     def search(self):
+        start_time = time.time()
         # loop for iterations, later on changed to time
         for i in range(self.num_iterations):
             print(i)
+            iteration_start_time = time.time()
+
             # selection, needs check
             selected_node = self.select_node(self.root)
+            #s_end_time = time.time()
+            #print(f"Selection {i + 1} took {s_end_time - iteration_start_time:.6f} seconds")
+
             if not selected_node.is_terminal_node():
                 selected_node = self.expand(selected_node)
+            #e_end_time = time.time()
+            #print(f"Expansions {i + 1} took {e_end_time - iteration_start_time:.6f} seconds")
+
             #simulation for selected node
             winner_color = self.rollout(selected_node)
+            #r_end_time = time.time()
+            #print(f"Rollout {i + 1} took {r_end_time - iteration_start_time:.6f} seconds")
             #back propagation
             self.backpropagate(selected_node, (winner_color == self.root.color))
 
+            #iteration_end_time = time.time()
+            #print(f"Iteration {i + 1} took {iteration_end_time - iteration_start_time:.6f} seconds")
+
         #after iteration, choose the best child
         best_child = self.best_child(self.root, 0)
+        end_time = time.time()
+        print(f"total took {end_time - start_time:.6f} seconds")
         return best_child.action
 
     #need check and fix!
     def select_node(self, node: Node):
 
         # if the selected node is not full expanded, return the node, else find the best children
-        if node.unexpanded_children:
+        if node.available_actions:
             return node
         else:
             best_child = self.best_child(node, self.exploration_parameter)
-            return node.select_node(best_child)
+            return self.select_node(best_child)
         
     #expand the node, and add all available child
     def expand(self, node):
-        if not node.unexpanded_children:
+        if not node.available_actions:
             return
-        while True:
-            try:
-                action = random.choice(node.unexpanded_children)
-                copy_state = deepcopy(node.state)
-                copy_state.apply_action(action)
-                break
-            except IllegalActionException:
-                node.unexpanded_children.remove(action)
-                
+        legal_actions = [a for a in node.available_actions if not self.is_illegal_action(a, node.state)]
+        action = random.choice(legal_actions)
         child_state = deepcopy(node.state)
         child_state.apply_action(action)
         child_color = _SWITCH_COLOR[node.color]
         child_node = Node(child_state, child_color, node, action)
+        node.available_actions.remove(action)
         node.add_child(child_node)
         return child_node
+
+    def is_illegal_action(self, action, state):
+        try:
+            copy_state = deepcopy(state)
+            copy_state.apply_action(action)
+            return False
+        except IllegalActionException:
+            return True
+
     #simulations
     def rollout(self, node):
         #create copy node
         tmp_node = deepcopy(node)
         curr_color = tmp_node.color
         curr_state = tmp_node.state
-
+        depth = 0
         #loop until game over
         while not curr_state.game_over:
             #it needs to be expending nodes and switch side at the same time, below comment code is wrong
-            #print(curr_state.turn_count)
+
+
             legal_actions = tmp_node.get_legal_actions()
             #random move
-            while True:
-                try:
-                    random_action = random.choice(legal_actions)
-                    copy_state = deepcopy(curr_state)
-                    copy_state.apply_action(random_action)
-                    break
-                except IllegalActionException:
-                    legal_actions.remove(random_action)
-            
-            curr_state.apply_action(random_action)
+            if curr_state._total_power >= 49:
+                legal_actions = [action for action in legal_actions if not isinstance(action, SpawnAction)]
+
+            curr_state.apply_action(random.choice(legal_actions))
             tmp_node.state = curr_state
             # need check 
             curr_color = _SWITCH_COLOR[curr_color]
             tmp_node.color = curr_color
+            depth +=1
         return curr_state.winner_color
             
-
     #back propagation 
     def backpropagate(self, node, result):
         node.visits += 1
