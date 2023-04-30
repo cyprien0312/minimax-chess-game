@@ -6,3 +6,5 @@ agent/__pycache__/program.cpython-310.pyc
 .vscode/settings.json
 agent/__pycache__/utils.cpython-310.pyc
 agent/__pycache__
+minimax/__pycache__/
+minimax/__pycache__/program.cpython-310.pyc
