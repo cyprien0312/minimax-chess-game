@@ -6,7 +6,11 @@ from referee.game import \
 from referee.game.constants import *
 from copy import deepcopy
 import random
-
+import time
+_SWITCH_COLOR = {
+    PlayerColor.RED: PlayerColor.BLUE,
+    PlayerColor.BLUE: PlayerColor.RED
+}
 # This is the entry point for your game playing agent. Currently the agent
 # simply spawns a token at the centre of the board if playing as RED, and
 # spreads a token at the centre of the board if playing as BLUE. This is
@@ -44,11 +48,15 @@ class Agent:
                 return random.choice(spawns + spreads)
             case PlayerColor.BLUE:
                 # This is going to be invalid... BLUE never spawned!
-                minimax = MiniMax(self.game_state, PlayerColor.BLUE, max_depth=3)
+                starttime = time.time()
+                minimax = MiniMax(self.game_state, PlayerColor.BLUE, max_depth=2)
                 minimax.generate_tree()
+                #minimax.print_tree()
                 best_action = minimax.find_next_step()
+                endtime = time.time()
+                print('time costs this round = ', endtime - starttime)
                 return best_action
-
+    
     def turn(self, color: PlayerColor, action: Action, **referee: dict):
         """
         Update the agent with the last player's action.
@@ -118,7 +126,7 @@ class MiniMax:
             return
         
         spawns, spreads = node.get_legal_actions()
-        next_color = PlayerColor.BLUE if node.color == PlayerColor.RED else PlayerColor.RED
+        next_color = _SWITCH_COLOR[node.color]
         #print(spawns + spreads)
         for action in spawns + spreads:
             child_state = deepcopy(node.state)
@@ -161,3 +169,15 @@ class MiniMax:
                 if beta <= alpha:
                     break
             return min_value, best_action
+    def print_tree(self):
+        self._print_tree_recursive(self.root, 0)
+
+    def _print_tree_recursive(self, node: Node, indent_level):
+        indent = '  ' * indent_level
+        if node.action:
+            print(f"{indent}{node.action} (Level: {node.level}, Value: {node.evaluation()})")
+        else:
+            print(f"{indent}Root (Level: {node.level}, Value: {node.evaluation()})")
+
+        for child in node.children:
+            self._print_tree_recursive(child, indent_level + 1)
