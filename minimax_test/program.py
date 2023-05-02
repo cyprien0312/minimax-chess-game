@@ -111,7 +111,7 @@ class Node:
                 actions.append(SpawnAction(cor))
         return actions
     
-    def evaluation(self):
+    def evaluation(self, root_color):
 
         opp_power = 0
         self_power = 0
@@ -119,10 +119,10 @@ class Node:
         self_cells = 0
 
         for cell in self.state._state.values():
-            if cell.player == self.color:
+            if cell.player == root_color:
                 self_power += cell.power
                 self_cells += 1
-            elif cell.player == _SWITCH_COLOR[self.color]:
+            elif cell.player == _SWITCH_COLOR[root_color]:
                 opp_power += cell.power
                 opp_cells += 1
 
@@ -167,11 +167,12 @@ class MiniMax:
         return node.evaluation()
 
     def _minimax_alpha_beta(self, node, depth, alpha, beta, maximizing_player, start_time=None, time_limit=10):
+
         if start_time is None:
             start_time = time.time()
 
         if depth == 0 or node.is_terminal_node():
-            return node.evaluation(), node.action
+            return node.evaluation(self.root.color), node.action
 
         #if time.time() - start_time >= time_limit:
         #    raise TimeoutError("Time limit exceeded")
