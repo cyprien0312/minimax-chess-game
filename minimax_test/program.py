@@ -132,7 +132,7 @@ class Node:
         power_score = self_power - opp_power
         cell_score = self_cells - opp_cells
         # Assign weights to each factor according to their importance
-        power_weight = 3
+        power_weight = 2
         cell_weight = 1
 
         total_cells = self_cells + opp_cells
@@ -140,8 +140,8 @@ class Node:
 
         if total_cells >= endgame_threshold:
             # Increase weights for more aggressive play when approaching the end of the game
-            power_weight = 7
-            cell_weight = 3
+            power_weight = 3
+            cell_weight = 1
 
         return (power_weight * power_score) + (cell_weight * cell_score)
 
@@ -179,8 +179,13 @@ class MiniMax:
         if start_time is None:
             start_time = time.time()
 
-        if depth == 0 or node.is_terminal_node():
+        if depth == 0 :
             return node.evaluation(self.root.color), node.action
+        if node.is_terminal_node():
+            if node.state.winner_color == self.root.color:
+                return float('inf'), node.action
+            else:
+                return float('-inf'), node.action
 
         #if time.time() - start_time >= time_limit:
         #    raise TimeoutError("Time limit exceeded")
