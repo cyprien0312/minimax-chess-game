@@ -124,7 +124,7 @@ class Node:
                 self_cells += 1
             elif cell.player == _SWITCH_COLOR[root_color]:
                 opp_power += cell.power
-                opp_cells += 1
+                opp_cells += 2
 
         power_score = self_power - opp_power
         cell_score = self_cells - opp_cells
@@ -133,7 +133,12 @@ class Node:
         cell_weight = 1
 
         total_cells = self_cells + opp_cells
+        endgame_threshold = int(0.5 * (7 * 7))  # 50% of the total board size
 
+        if total_cells >= endgame_threshold:
+            # Increase weights for more aggressive play when approaching the end of the game
+            power_weight = 7
+            cell_weight = 3
 
         return (power_weight * power_score) + (cell_weight * cell_score)
 
