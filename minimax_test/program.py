@@ -43,7 +43,6 @@ class Agent:
         """
         Return the next action to take.
         """
-        random.seed(88)
         match self._color:
             case PlayerColor.RED:
                 starttime = time.time()
@@ -99,17 +98,21 @@ class Node:
         return self.state.game_over
     
     def get_legal_actions(self):
-        actions = []
+        spawns = []
+        spreads = []
         directions = [HexDir.Down, HexDir.DownLeft, HexDir.DownRight, HexDir.Up, HexDir.UpLeft, HexDir.UpRight]
         for cor in COORDINATES:
             if self.state._cell_occupied(cor):
                 cellColor, cellPower = self.state[cor]
                 if cellColor == self.color:
                     for direction in directions:
-                        actions.append(SpreadAction(cor, direction))
+                        spreads.append(SpreadAction(cor, direction))
             else:
-                actions.append(SpawnAction(cor))
-        return actions
+                spawns.append(SpawnAction(cor))
+        if self.state._total_power >= 49:
+            return spreads
+        else:
+            return spreads + spawns
     
     def evaluation(self, root_color):
 
@@ -129,7 +132,7 @@ class Node:
         power_score = self_power - opp_power
         cell_score = self_cells - opp_cells
         # Assign weights to each factor according to their importance
-        power_weight = 2
+        power_weight = 3
         cell_weight = 1
 
         total_cells = self_cells + opp_cells
