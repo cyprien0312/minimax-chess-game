@@ -43,10 +43,11 @@ class Agent:
         """
         Return the next action to take.
         """
+        random.seed(88)
         match self._color:
             case PlayerColor.RED:
                 starttime = time.time()
-                minimax = MiniMax(self.game_state, PlayerColor.RED, max_depth=2)
+                minimax = MiniMax(self.game_state, PlayerColor.RED, max_depth=1)
                 #minimax.generate_tree()
                 best_action = minimax.find_next_step()
                 endtime = time.time()
@@ -85,12 +86,10 @@ class Agent:
                 pass
 
 class Node:
-    def __init__(self, state: Board, color: PlayerColor, level: int, parent = None, action = None) -> None:
+    def __init__(self, state: Board, color: PlayerColor, level: int, action = None) -> None:
         self.color = color
         self.state = state
-        self.parent = parent
         self.action = action
-        self.children = []
         self.level = level
 
     def add_child(self, child):
@@ -113,24 +112,28 @@ class Node:
         return actions
     
     def evaluation(self):
-        red_power = 0
-        blue_power = 0
-        red_cells = 0
-        blue_cells = 0
+
+        opp_power = 0
+        self_power = 0
+        opp_cells = 0
+        self_cells = 0
 
         for cell in self.state._state.values():
-            if cell.player == PlayerColor.BLUE:
-                blue_power += cell.power
-                blue_cells += 1
-            elif cell.player == PlayerColor.RED:
-                red_power += cell.power
-                red_cells += 1
+            if cell.player == self.color:
+                self_power += cell.power
+                self_cells += 1
+            elif cell.player == _SWITCH_COLOR[self.color]:
+                opp_power += cell.power
+                opp_cells += 1
 
-        power_score = blue_power - red_power
-        cell_score = blue_cells - red_cells
+        power_score = self_power - opp_power
+        cell_score = self_cells - opp_cells
         # Assign weights to each factor according to their importance
         power_weight = 2
         cell_weight = 1
+
+        total_cells = self_cells + opp_cells
+
 
         return (power_weight * power_score) + (cell_weight * cell_score)
 
@@ -141,22 +144,21 @@ class MiniMax:
         self.max_depth = max_depth
     
     def find_next_step(self):
-        maximizing_player = self.root.color == PlayerColor.BLUE
+        maximizing_player = True
         best_action = None
         start_time = time.time()
         time_limit = 5
 
         for depth in range(1, self.max_depth + 1):
-            try:
-                current_value, current_action = self._minimax_alpha_beta(self.root, depth, float('-inf'), float('inf'), maximizing_player)
-                best_action = current_action
-            except TimeoutError:
-                break
+            
+            current_value, current_action = self._minimax_alpha_beta(self.root, depth, float('-inf'), float('inf'), maximizing_player)
+            best_action = current_action
+                
 
             # Check if the elapsed time exceeds the time limit
-            elapsed_time = time.time() - start_time
-            if elapsed_time >= time_limit:
-                break
+            #elapsed_time = time.time() - start_time
+            #if elapsed_time >= time_limit:
+            #    break
 
         return best_action
 
@@ -164,15 +166,15 @@ class MiniMax:
     def heuristic(self, node: Node):
         return node.evaluation()
 
-    def _minimax_alpha_beta(self, node, depth, alpha, beta, maximizing_player, start_time=None, time_limit=5):
+    def _minimax_alpha_beta(self, node, depth, alpha, beta, maximizing_player, start_time=None, time_limit=10):
         if start_time is None:
             start_time = time.time()
 
         if depth == 0 or node.is_terminal_node():
             return node.evaluation(), node.action
 
-        if time.time() - start_time >= time_limit:
-            raise TimeoutError("Time limit exceeded")
+        #if time.time() - start_time >= time_limit:
+        #    raise TimeoutError("Time limit exceeded")
 
         best_action = None
         legal_actions = node.get_legal_actions()
@@ -182,11 +184,11 @@ class MiniMax:
             for action in legal_actions:
                 child_state = deepcopy(node.state)
                 child_state.apply_action(action)
-                child_node = Node(child_state, _SWITCH_COLOR[node.color], node.level + 1, parent=node, action=action)
+                child_node = Node(child_state, _SWITCH_COLOR[node.color], node.level + 1,action=action)
 
                 value, _ = self._minimax_alpha_beta(child_node, depth - 1, alpha, beta, False, start_time, time_limit)
 
-                if value > max_value:
+                if value > max_value and child_state._total_power < 49:
                     max_value = value
                     best_action = action
                 alpha = max(alpha, max_value)
@@ -198,11 +200,11 @@ class MiniMax:
             for action in legal_actions:
                 child_state = deepcopy(node.state)
                 child_state.apply_action(action)
-                child_node = Node(child_state, _SWITCH_COLOR[node.color], node.level + 1, parent=node, action=action)
+                child_node = Node(child_state, _SWITCH_COLOR[node.color], node.level + 1,action=action)
 
                 value, _ = self._minimax_alpha_beta(child_node, depth - 1, alpha, beta, True, start_time, time_limit)
 
-                if value < min_value:
+                if value < min_value and child_state._total_power < 49:
                     min_value = value
                     best_action = action
                 beta = min(beta, min_value)
