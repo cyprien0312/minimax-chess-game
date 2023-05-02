@@ -46,8 +46,8 @@ class Agent:
         match self._color:
             case PlayerColor.RED:
                 starttime = time.time()
-                minimax = MiniMax(self.game_state, PlayerColor.RED, max_depth=1)
-                minimax.generate_tree()
+                minimax = MiniMax(self.game_state, PlayerColor.RED, max_depth=2)
+                #minimax.generate_tree()
                 best_action = minimax.find_next_step()
                 endtime = time.time()
                 print('time costs this round = ', endtime - starttime)
@@ -58,7 +58,7 @@ class Agent:
                 # This is going to be invalid... BLUE never spawned!
                 starttime = time.time()
                 minimax = MiniMax(self.game_state, PlayerColor.BLUE, max_depth=2)
-                minimax.generate_tree()
+                #minimax.generate_tree()
                 #total_nodes = minimax.print_tree()
                 best_action = minimax.find_next_step()
                 endtime = time.time()
@@ -140,23 +140,6 @@ class MiniMax:
         self.root = Node(root_state, curr_color, level=0)
         self.max_depth = max_depth
     
-    def generate_tree(self):
-        self._generate_tree_recursive(self.root, self.max_depth)
-
-    def _generate_tree_recursive(self, node: Node, depth):
-        if depth == 0 or node.is_terminal_node():
-            return
-        
-        actions = node.get_legal_actions()
-        next_color = _SWITCH_COLOR[node.color]
-        #print(spawns + spreads)
-        for action in actions:
-            child_state = deepcopy(node.state)
-            child_state.apply_action(action)
-            child_node = Node(child_state, next_color, node.level + 1, parent=node, action=action)
-            node.add_child(child_node)
-            self._generate_tree_recursive(child_node, depth - 1)
-    
     def find_next_step(self):
         maximizing_player = self.root.color == PlayerColor.BLUE
         best_action = None
@@ -187,32 +170,41 @@ class MiniMax:
 
         if depth == 0 or node.is_terminal_node():
             return node.evaluation(), node.action
-        #random.shuffle(node.children)
-        node.children.sort(key=self.heuristic, reverse=maximizing_player)
+
         if time.time() - start_time >= time_limit:
             raise TimeoutError("Time limit exceeded")
 
-        node.children.sort(key=self.heuristic, reverse=maximizing_player)
+        best_action = None
+        legal_actions = node.get_legal_actions()
+
         if maximizing_player:
             max_value = float('-inf')
-            best_action = None
-            for child in node.children:
-                value, action = self._minimax_alpha_beta(child, depth - 1, alpha, beta, False, start_time, time_limit)
+            for action in legal_actions:
+                child_state = deepcopy(node.state)
+                child_state.apply_action(action)
+                child_node = Node(child_state, _SWITCH_COLOR[node.color], node.level + 1, parent=node, action=action)
+
+                value, _ = self._minimax_alpha_beta(child_node, depth - 1, alpha, beta, False, start_time, time_limit)
+
                 if value > max_value:
                     max_value = value
-                    best_action = child.action
+                    best_action = action
                 alpha = max(alpha, max_value)
                 if beta <= alpha:
                     break
             return max_value, best_action
         else:
             min_value = float('inf')
-            best_action = None
-            for child in node.children:
-                value, action = self._minimax_alpha_beta(child, depth - 1, alpha, beta, True, start_time, time_limit)
+            for action in legal_actions:
+                child_state = deepcopy(node.state)
+                child_state.apply_action(action)
+                child_node = Node(child_state, _SWITCH_COLOR[node.color], node.level + 1, parent=node, action=action)
+
+                value, _ = self._minimax_alpha_beta(child_node, depth - 1, alpha, beta, True, start_time, time_limit)
+
                 if value < min_value:
                     min_value = value
-                    best_action = child.action
+                    best_action = action
                 beta = min(beta, min_value)
                 if beta <= alpha:
                     break
