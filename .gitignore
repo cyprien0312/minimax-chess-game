@@ -10,3 +10,8 @@ minimax/__pycache__/
 minimax/__pycache__/program.cpython-310.pyc
 minimax_test/__pycache__/__init__.cpython-310.pyc
 minimax_test/__pycache__/program.cpython-310.pyc
+greedyagent/__pycache__/program.cpython-310.pyc
+.gitignore
+greedyagent/__init__.py
+greedyagent/program.py
+greedyagent/__pycache__/__init__.cpython-310.pyc
