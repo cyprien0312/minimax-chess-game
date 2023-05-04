@@ -47,13 +47,13 @@ class Agent:
             case PlayerColor.RED:
                 #random.seed(88)
                 #starttime = time.time()
-                minimax = MiniMax(self.game_state, PlayerColor.RED, max_depth=2)
+                minimax = MiniMax(self.game_state, PlayerColor.RED, max_depth=1)
                 #minimax.generate_tree()
                 best_action = minimax.find_next_step()
                 #endtime = time.time()
                 #print('time costs this round = ', endtime - starttime)
-                #actions = minimax.root.get_legal_actions()
-                #return random.choice(actions)
+                actions = minimax.root.get_legal_actions()
+                return random.choice(actions)
                 return best_action
             case PlayerColor.BLUE:
                 # This is going to be invalid... BLUE never spawned!
@@ -208,7 +208,8 @@ class MiniMax:
         
         return best_action
 
-
+    def heuristic(self, node: Node):
+        return node.evaluation(self.root.color)
 
     def _minimax_alpha_beta(self, node, depth, alpha, beta, maximizing_player, start_time=None, time_limit=1):
 
@@ -222,6 +223,7 @@ class MiniMax:
 
         if not node.children:
             legal_actions = node.get_legal_actions()
+        node.children.sort(key=self.heuristic, reverse=maximizing_player)
         best_action = None
         if maximizing_player:
             max_value = float('-inf')
