@@ -45,26 +45,28 @@ class Agent:
         """
         match self._color:
             case PlayerColor.RED:
-                starttime = time.time()
-                minimax = MiniMax(self.game_state, PlayerColor.RED, max_depth=1)
+                #random.seed(88)
+                #starttime = time.time()
+                minimax = MiniMax(self.game_state, PlayerColor.RED, max_depth=2)
                 #minimax.generate_tree()
                 best_action = minimax.find_next_step()
-                endtime = time.time()
-                print('time costs this round = ', endtime - starttime)
-                actions = minimax.root.get_legal_actions()
-                return random.choice(actions)
-                #return best_action
+                #endtime = time.time()
+                #print('time costs this round = ', endtime - starttime)
+                #actions = minimax.root.get_legal_actions()
+                #return random.choice(actions)
+                return best_action
             case PlayerColor.BLUE:
                 # This is going to be invalid... BLUE never spawned!
-                starttime = time.time()
+                #starttime = time.time()
                 minimax = MiniMax(self.game_state, PlayerColor.BLUE, max_depth=2)
                 #minimax.generate_tree()
                 #total_nodes = minimax.print_tree()
                 best_action = minimax.find_next_step()
-                endtime = time.time()
+                #endtime = time.time()
                 #self.node_explore.append(total_nodes)
-                self.time_taken.append(endtime - starttime)
-                print('total time costs = ', sum(self.time_taken))
+                #self.time_taken.append(endtime - starttime)
+                #print(endtime - starttime)
+                #print('total time costs = ', sum(self.time_taken))
                 #print(self.node_explore)
                 #print(self.time_taken)
 
@@ -90,6 +92,7 @@ class Node:
         self.state = state
         self.action = action
         self.level = level
+        self.children = []
 
     def add_child(self, child):
         self.children.append(child)
@@ -144,6 +147,37 @@ class Node:
             cell_weight = 1
 
         return (power_weight * power_score) + (cell_weight * cell_score)
+    
+    def evaluation_state(self, root_color, test_state):
+
+        opp_power = 0
+        self_power = 0
+        opp_cells = 0
+        self_cells = 0
+
+        for cell in test_state._state.values():
+            if cell.player == root_color:
+                self_power += cell.power
+                self_cells += 1
+            elif cell.player == _SWITCH_COLOR[root_color]:
+                opp_power += cell.power
+                opp_cells += 2
+
+        power_score = self_power - opp_power
+        cell_score = self_cells - opp_cells
+        # Assign weights to each factor according to their importance
+        power_weight = 2
+        cell_weight = 1
+
+        total_cells = self_cells + opp_cells
+        endgame_threshold = int(0.5 * (7 * 7))  # 50% of the total board size
+
+        if total_cells >= endgame_threshold:
+            # Increase weights for more aggressive play when approaching the end of the game
+            power_weight = 3
+            cell_weight = 1
+
+        return (power_weight * power_score) + (cell_weight * cell_score)
 
     
 class MiniMax:
@@ -155,29 +189,25 @@ class MiniMax:
         maximizing_player = True
         best_action = None
         start_time = time.time()
-        time_limit = 5
+        time_limit = 0.8
 
         for depth in range(1, self.max_depth + 1):
             
-            current_value, current_action = self._minimax_alpha_beta(self.root, depth, float('-inf'), float('inf'), maximizing_player)
+            current_value, current_action = self._minimax_alpha_beta(self.root, depth, float('-inf'), float('inf'), maximizing_player, time_limit)
             best_action = current_action
                 
 
             # Check if the elapsed time exceeds the time limit
-            #elapsed_time = time.time() - start_time
-            #if elapsed_time >= time_limit:
-            #    break
-
+            end_time = time.time()
+            elapsed_time = end_time - start_time
+            if elapsed_time >= time_limit:
+                break
+        
         return best_action
 
 
-    def heuristic(self, node: Node):
-        return node.evaluation()
 
-    def _minimax_alpha_beta(self, node, depth, alpha, beta, maximizing_player, start_time=None, time_limit=10):
-
-        if start_time is None:
-            start_time = time.time()
+    def _minimax_alpha_beta(self, node, depth, alpha, beta, maximizing_player, start_time=None, time_limit=1):
 
         if depth == 0 :
             return node.evaluation(self.root.color), node.action
@@ -187,38 +217,48 @@ class MiniMax:
             else:
                 return float('-inf'), node.action
 
-        #if time.time() - start_time >= time_limit:
-        #    raise TimeoutError("Time limit exceeded")
-
+        if not node.children:
+            legal_actions = node.get_legal_actions()
         best_action = None
-        legal_actions = node.get_legal_actions()
-
         if maximizing_player:
             max_value = float('-inf')
-            for action in legal_actions:
-                child_state = deepcopy(node.state)
-                child_state.apply_action(action)
-                child_node = Node(child_state, _SWITCH_COLOR[node.color], node.level + 1,action=action)
+            if node.children:
+                for child in node.children:
+                    value, _ = self._minimax_alpha_beta(child, depth - 1, alpha, beta, False, start_time, time_limit)
 
-                value, _ = self._minimax_alpha_beta(child_node, depth - 1, alpha, beta, False, start_time, time_limit)
+                    if value > max_value:
+                        max_value = value
+                        best_action = child.action
+                    alpha = max(alpha, max_value)
+                    if beta <= alpha:
+                        break
+                return max_value, best_action
+            
+            else:
+                for action in legal_actions:
+                    child_state = deepcopy(node.state)
+                    child_state.apply_action(action)
+                    child_node = Node(child_state, _SWITCH_COLOR[node.color], node.level + 1,action=action)
+                    node.add_child(child_node)
+                    child_node.action = action
+                    value, _ = self._minimax_alpha_beta(child_node, depth - 1, alpha, beta, False, start_time, time_limit)
 
-                if value > max_value and child_state._total_power < 49:
-                    max_value = value
-                    best_action = action
-                alpha = max(alpha, max_value)
-                if beta <= alpha:
-                    break
-            return max_value, best_action
+                    if value > max_value:
+                        max_value = value
+                        best_action = action
+                    alpha = max(alpha, max_value)
+                    if beta <= alpha:
+                        break
+                return max_value, best_action
         else:
             min_value = float('inf')
             for action in legal_actions:
                 child_state = deepcopy(node.state)
                 child_state.apply_action(action)
-                child_node = Node(child_state, _SWITCH_COLOR[node.color], node.level + 1,action=action)
 
-                value, _ = self._minimax_alpha_beta(child_node, depth - 1, alpha, beta, True, start_time, time_limit)
+                value = self.root.evaluation_state(self.root.color, child_state)
 
-                if value < min_value and child_state._total_power < 49:
+                if value < min_value:
                     min_value = value
                     best_action = action
                 beta = min(beta, min_value)

@@ -187,7 +187,7 @@ class MiniMax:
 
         if depth == 0 or node.is_terminal_node():
             return node.evaluation(), node.action
-        #random.shuffle(node.children)
+        random.shuffle(node.children)
         node.children.sort(key=self.heuristic, reverse=maximizing_player)
         if time.time() - start_time >= time_limit:
             raise TimeoutError("Time limit exceeded")
