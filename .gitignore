@@ -15,3 +15,5 @@ greedyagent/__pycache__/program.cpython-310.pyc
 greedyagent/__init__.py
 greedyagent/program.py
 greedyagent/__pycache__/__init__.cpython-310.pyc
+output.txt
+times.txt
